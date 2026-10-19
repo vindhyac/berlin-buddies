@@ -1,0 +1,37 @@
+name: Refresh places and events
+
+on:
+  schedule:
+    - cron: "17 */6 * * *" # every 6 hours
+  workflow_dispatch: # "Run workflow" button on GitHub
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run refresh-data
+      - name: Commit new data if it changed
+        run: |
+          git config user.name "berlin-buddies-bot"
+          git config user.email "berlin-buddies-bot@users.noreply.github.com"
+          git add public/data
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "Refresh places and events data"
+            git push
+          fi
